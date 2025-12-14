@@ -1,0 +1,89 @@
+local G, P, RS, RunService, Workspace, ENUM = game.GetService, game.GetService("Players"), game.GetService("ReplicatedStorage"), game.GetService("RunService"), game.GetService("Workspace"), Enum
+local LP = P.LocalPlayer
+local Config = {Enabled = true, GodMode = true, AntiAFK = true, FarmRange = 150, TargetMinerals = {"Copper Ore", "Silver Ore", "Gold Ore"}, TargetMobs = {"Thief", "Guard"}, TargetGate = "PortalToWorld2", TeleportToMap = false, AttackDelay = 0.5, Delay = 1.2}
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+-- BẢO VỆ & GOD MODE
+do -- Hooks & Remotes
+    local mt, mt_gui = getrawmetatable(game), getrawmetatable(LP:WaitForChild("PlayerGui"))
+    setreadonly(mt, false); setreadonly(mt_gui, false)
+    local oldNC = mt.__namecall
+    mt.__namecall = newcclosure(function(self, ...) if getnamecallmethod():lower() == "kick" or tostring(self) == "BanRemote" then return end return oldNC(self, ...) end)
+    mt_gui.__index = newcclosure(function(self, k) if k == "Players" then return {} end return mt_gui.__index(self, k) end)
+    setreadonly(mt, true); setreadonly(mt_gui, true)
+    for _, name in ipairs({"BanRemote", "KickRemote", "LogRemote", "ExploitRemote"}) do
+        local r = RS:FindFirstChild(name, true)
+        if r then hookfunction(r:IsA("RemoteEvent") and r.FireServer or r.InvokeServer, function() end) end
+    end
+    if Config.AntiAFK then local cons = getconnections or get_signal_cons
+        if cons then for _, c in pairs(cons(LP.Idled)) do if c.Disable then c:Disable() elseif c.disconnect then c:disconnect() end end end
+    end
+end
+
+-- GOD MODE LOGIC
+local function SetState(char)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        for _, state in ipairs({ENUM.HumanoidStateType.Dead, ENUM.HumanoidStateType.FallingDown, ENUM.HumanoidStateType.GettingUp}) do hum:SetStateEnabled(state, false) end
+        if Config.GodMode then hum.Health = hum.MaxHealth or 100 end
+    end
+end
+LP.CharacterAdded:Connect(SetState); SetState(LP.Character or LP.CharacterAdded:Wait())
+if hookfunction and Config.GodMode then
+    local hum = (LP.Character or LP.CharacterAdded:Wait()):FindFirstChildOfClass("Humanoid")
+    if hum and hum.TakeDamage then hookfunction(hum.TakeDamage, function(self, damage) if self == hum then return end return hum.TakeDamage(self, damage) end) end
+end
+setfpscap(30); G("Lighting").GlobalShadows, G("Lighting").FogEnd = false, math.huge
+
+-- LOGIC AUTO FARM (Hàm)
+local function GetNearestTarget(targetNames)
+    local HRP = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not HRP then return nil end
+    local nearestTarget, shortestDist = nil, Config.FarmRange
+    for _, item in pairs(Workspace:GetDescendants()) do
+        local itemName = item:IsA("ProximityPrompt") and item.Parent.Name or item.Name
+        if table.find(targetNames, itemName) then
+            local itemHRP = item:FindFirstChild("HumanoidRootPart") or (item:IsA("BasePart") and item) or (item:IsA("ProximityPrompt") and item.Parent:FindFirstChild("PrimaryPart"))
+            if itemHRP then
+                local dist = (HRP.Position - itemHRP.Position).Magnitude
+                if dist < shortestDist then shortestDist, nearestTarget = dist, item end
+            end
+        end
+    end
+    return nearestTarget
+end
+local function Interact(part, remoteName)
+    local CD, PP = part:FindFirstChildOfClass("ClickDetector"), part:FindFirstChildOfClass("ProximityPrompt")
+    if PP and PP.Enabled then fireproximityprompt(PP); return true end
+    if CD then fireclickdetector(CD); return true end
+    local Remote = RS:FindFirstChild(remoteName)
+    if Remote then Remote:FireServer(part); return true end
+    return false
+end
+local function Attack(mob)
+    local CombatRemote, hum = RS:FindFirstChild("CombatRemote"), mob:FindFirstChildOfClass("Humanoid")
+    if CombatRemote and hum then CombatRemote:FireServer(1, mob.HumanoidRootPart.Position, hum); return true end
+    return false
+end
+
+-- VÒNG LẶP CHÍNH
+RunService.Heartbeat:Connect(function()
+    local char = LP.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and Config.GodMode then hum.Health = hum.MaxHealth or 100 end
+        
+        -- Tàng hình & Tối ưu hóa môi trường
+        for _, container in ipairs({char, Workspace}) do
+            for _, part in pairs(container:GetDescendants()) do
+                local n = part.ClassName
+                if n == "BasePart" then part.Transparency, part.CanCollide, part.CastShadow = 1, false, false; part.Material, part.Reflectance = ENUM.Material.SmoothPlastic, 0
+                elseif n == "Decal" or n == "ParticleEmitter" or n == "Trail" then part.Enabled = false
+                elseif n == "Accessory" and container == char then part:Destroy() end
+            end
+        end
+    end
+
+    if not Config.Enabled then return end
+    local TM, TO, TG = GetNearestTarget(Config.TargetMobs), GetNearestTarget(Config.TargetMinerals), GetNearestTarget({Co
