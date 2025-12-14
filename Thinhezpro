@@ -1,0 +1,139 @@
+-- THINHEZ PRO FULL
+-- by thinhezgame / he
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local Run = game:GetService("RunService")
+local lp = Players.LocalPlayer
+local char = lp.Character or lp.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local hrp = char:WaitForChild("HumanoidRootPart")
+
+-- GUI
+local gui = Instance.new("ScreenGui", lp.PlayerGui)
+gui.Name = "ThinhezPro"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,220,0,260)
+frame.Position = UDim2.new(0.5,-110,0.5,-130)
+frame.BackgroundColor3 = Color3.fromRGB(15,15,20)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,14)
+
+-- DRAG
+do
+	local drag, dPos, sPos
+	frame.InputBegan:Connect(function(i)
+		if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
+			drag=true dPos=i.Position sPos=frame.Position
+		end
+	end)
+	UIS.InputEnded:Connect(function() drag=false end)
+	UIS.InputChanged:Connect(function(i)
+		if drag then
+			local d=i.Position-dPos
+			frame.Position=UDim2.new(sPos.X.Scale,sPos.X.Offset+d.X,sPos.Y.Scale,sPos.Y.Offset+d.Y)
+		end
+	end)
+end
+
+-- TITLE
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,40)
+title.Text = "THINHEZ PRO"
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.fromRGB(0,200,255)
+title.BackgroundTransparency = 1
+
+-- BUTTON MAKER
+local function btn(txt,y)
+	local b=Instance.new("TextButton",frame)
+	b.Size=UDim2.new(1,-20,0,36)
+	b.Position=UDim2.new(0,10,0,y)
+	b.Text=txt
+	b.TextScaled=true
+	b.Font=Enum.Font.GothamBold
+	b.BackgroundColor3=Color3.fromRGB(30,30,40)
+	b.TextColor3=Color3.new(1,1,1)
+	Instance.new("UICorner",b).CornerRadius=UDim.new(0,10)
+	return b
+end
+
+-- RUN
+local runOn=false
+btn("RUN",50).MouseButton1Click:Connect(function()
+	runOn=not runOn
+	hum.WalkSpeed=runOn and 32 or 16
+end)
+
+-- FLY
+local fly=false
+local bv,bg
+btn("FLY",90).MouseButton1Click:Connect(function()
+	fly=not fly
+	if fly then
+		bv=Instance.new("BodyVelocity",hrp)
+		bv.MaxForce=Vector3.new(1e6,1e6,1e6)
+		bg=Instance.new("BodyGyro",hrp)
+		bg.MaxTorque=Vector3.new(1e6,1e6,1e6)
+		hum.PlatformStand=true
+	else
+		if bv then bv:Destroy() end
+		if bg then bg:Destroy() end
+		hum.PlatformStand=false
+	end
+end)
+
+Run.RenderStepped:Connect(function()
+	if fly and bv and bg then
+		local cam=workspace.CurrentCamera
+		bv.Velocity=(cam.CFrame.LookVector*hum.MoveDirection.Z+cam.CFrame.RightVector*hum.MoveDirection.X)*60
+		bg.CFrame=cam.CFrame
+	end
+end)
+
+-- NOCLIP
+local noclip=false
+btn("NOCLIP",130).MouseButton1Click:Connect(function()
+	noclip=not noclip
+end)
+
+Run.Stepped:Connect(function()
+	if noclip and char then
+		for _,v in pairs(char:GetDescendants()) do
+			if v:IsA("BasePart") then v.CanCollide=false end
+		end
+	end
+end)
+
+-- GOD
+local god=false
+btn("GOD MODE",170).MouseButton1Click:Connect(function()
+	god=not god
+	if god then
+		hum.MaxHealth=math.huge
+		hum.Health=hum.MaxHealth
+	else
+		hum.MaxHealth=100
+	end
+end)
+
+-- ESP
+local esp=false
+btn("ESP",210).MouseButton1Click:Connect(function()
+	esp=not esp
+	for _,p in pairs(Players:GetPlayers()) do
+		if p~=lp and p.Character then
+			if esp then
+				if not p.Character:FindFirstChild("ESP") then
+					local h=Instance.new("Highlight",p.Character)
+					h.Name="ESP"
+					h.FillColor=Color3.fromRGB(255,0,0)
+				end
+			else
+				local h=p.Character:FindFirstChild("ESP")
+				if h then h:Destroy() end
+			end
+		end
+	end
+end)
